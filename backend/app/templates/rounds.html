@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Rounds Management</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h2>Start New Round</h2>
+    <form id="startRoundForm">
+        <!-- User ID input removed - will come from token -->
+        <label for="siteId_round">Site ID:</label>
+        <input type="number" id="siteId_round" required placeholder="Enter Site ID">
+        <button type="submit">Start Round</button>
+    </form>
+    <p id="roundMessage"></p>
+    <hr>
+    <h2>My Rounds / All Rounds</h2>
+    <div id="roundsList">
+        <p>Loading rounds...</p>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script> <!-- Include main script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            if (!getAuthToken()) { // From script.js
+                document.body.innerHTML = '<h1>Access Denied</h1><p>Please login to manage rounds.</p><p><a href="/login">Login</a></p>';
+                return;
+            }
+
+            const startRoundForm = document.getElementById('startRoundForm');
+            const siteIdInput = document.getElementById('siteId_round');
+            const roundMessageEl = document.getElementById('roundMessage');
+            const roundsListEl = document.getElementById('roundsList');
+
+            if (startRoundForm) {
+                startRoundForm.addEventListener('submit', async function(event) {
+                    event.preventDefault();
+                    const siteId = siteIdInput.value;
+                    if (!siteId) {
+                        roundMessageEl.textContent = 'Site ID is required.';
+                        roundMessageEl.style.color = 'red';
+                        return;
+                    }
+                    try {
+                        const response = await fetchWithAuth('/api/rounds', {
+                            method: 'POST',
+                            body: JSON.stringify({ site_id: parseInt(siteId) })
+                        });
+                        const result = await response.json();
+                        if (response.ok) {
+                            roundMessageEl.textContent = 'Round started: ID ' + result.round_id;
+                            roundMessageEl.style.color = 'green';
+                            siteIdInput.value = '';
+                            fetchRounds();
+                        } else {
+                            roundMessageEl.textContent = 'Error: ' + result.message;
+                            roundMessageEl.style.color = 'red';
+                        }
+                    } catch (error) {
+                        if (error.message !== 'Unauthorized') {
+                            roundMessageEl.textContent = 'Network error: ' + error.message;
+                            roundMessageEl.style.color = 'red';
+                        }
+                    }
+                });
+            }
+
+            async function fetchRounds() {
+                if (!roundsListEl) return;
+                try {
+                    const response = await fetchWithAuth('/api/rounds');
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const rounds = await response.json();
+
+                    if (rounds.length === 0) {
+                        roundsListEl.innerHTML = '<p>No rounds found.</p>';
+                        return;
+                    }
+
+                    let roundsHTML = '<ul>';
+                    rounds.forEach(round => {
+                        roundsHTML += `<li>Round ID: ${round.id} (User: ${round.username}, Site: ${round.site_name}) - Status: ${round.status} <br> Start: ${new Date(round.start_time).toLocaleString()}`;
+                        if (round.end_time) {
+                            roundsHTML += `, End: ${new Date(round.end_time).toLocaleString()}`;
+                        }
+                        roundsHTML += ` <a href="#" onclick="viewRoundDetails(${round.id})">(View Details)</a>`;
+                        // TODO: Add buttons to record checkpoint or end round if active and authorized
+                        roundsHTML += '</li>';
+                    });
+                    roundsHTML += '</ul>';
+                    roundsListEl.innerHTML = roundsHTML;
+
+                } catch (error) {
+                    if (error.message !== 'Unauthorized') {
+                         roundsListEl.innerHTML = '<p class="error">Error loading rounds: ' + error.message + '</p>';
+                    }
+                }
+            }
+
+            window.viewRoundDetails = async function(roundId) {
+                try {
+                    const response = await fetchWithAuth(`/api/rounds/${roundId}`);
+                    if (!response.ok) {
+                         const errorResult = await response.json();
+                         alert(`Error fetching round details: ${errorResult.message}`);
+                         return;
+                    }
+                    const details = await response.json();
+                    let detailsString = `Round ID: ${details.id}\nUser: ${details.username} (ID: ${details.user_id})\nSite: ${details.site_name} (ID: ${details.site_id})\nStatus: ${details.status}\nStart Time: ${new Date(details.start_time).toLocaleString()}\n`;
+                    if (details.end_time) detailsString += `End Time: ${new Date(details.end_time).toLocaleString()}\n`;
+                    detailsString += '\nCheckpoints Visited:\n';
+                    if (details.checkpoints_visited && details.checkpoints_visited.length > 0) {
+                        details.checkpoints_visited.forEach(cp => {
+                            detailsString += `- ${cp.checkpoint_name} at ${new Date(cp.timestamp).toLocaleString()} (Notes: ${cp.notes || 'N/A'})\n`;
+                        });
+                    } else {
+                        detailsString += 'No checkpoints recorded.\n';
+                    }
+                    alert(detailsString);
+                } catch (error) {
+                    if (error.message !== 'Unauthorized') {
+                        alert('Error fetching round details: ' + error.message);
+                    }
+                }
+            };
+
+            await fetchRounds();
+        });
+    </script>
+</body>
+</html>

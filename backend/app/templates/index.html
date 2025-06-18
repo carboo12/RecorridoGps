@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movement Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Movement Tracker</h1>
+    <nav>
+        <ul>
+            <li><a href="{{ url_for('main.index_page') }}">Home</a></li>
+            <li><a id="nav-login" href="{{ url_for('main.login_page') }}">Login</a></li>
+            <li><a id="nav-signup" href="{{ url_for('main.signup_page') }}">Sign Up</a></li>
+            <li><a id="nav-admin" href="{{ url_for('main.admin_page') }}">Admin</a></li>
+            <li><a id="nav-rounds" href="{{ url_for('main.rounds_page') }}">Rounds</a></li>
+            <li><a id="nav-logout" href="#" onclick="logout()" style="display:none;">Logout</a></li>
+        </ul>
+    </nav>
+    <div id="content">
+        <p id="welcome-message">Welcome to the Movement Tracker application.</p>
+        <!-- Rest of the content -->
+    </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

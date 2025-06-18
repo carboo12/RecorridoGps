@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin - Site Management</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h2>Site Management</h2>
+    <form id="siteForm">
+        <input type="text" id="siteName" placeholder="Site Name" required>
+        <input type="text" id="siteCoordinates" placeholder="Site Coordinates (lat,lon)"> <!-- Changed to siteCoordinates -->
+        <textarea id="siteDescription" placeholder="Site Description"></textarea>
+        <button type="submit">Create Site</button>
+    </form>
+    <div id="sitesList"></div>
+    <hr>
+    <h2>Checkpoint Management</h2>
+    <form id="checkpointForm">
+        <label for="checkpointSiteId">For Site:</label>
+        <select id="checkpointSiteId" required></select> <!-- Populate with sites -->
+        <input type="text" id="checkpointName" placeholder="Checkpoint Name" required>
+        <textarea id="checkpointDescription" placeholder="Checkpoint Description"></textarea>
+        <button type="submit">Create Checkpoint</button>
+    </form>
+    <div id="checkpointsList"></div>
+    <hr>
+    <h2>Access Point Management</h2>
+    <form id="accessPointForm">
+        <label for="accessPointSiteId">For Site:</label>
+        <select id="accessPointSiteId" required></select> <!-- Populate with sites -->
+        <input type="text" id="accessPointName" placeholder="Access Point Name" required>
+        <input type="text" id="accessPointCoordinates" placeholder="Coordinates (lat,lon)" required>
+        <textarea id="accessPointDescription" placeholder="Access Point Description"></textarea>
+        <button type="submit">Create Access Point</button>
+    </form>
+    <div id="accessPointsList"></div>
+    <script src="{{ url_for('static', filename='admin.js') }}"></script>
+</body>
+</html>

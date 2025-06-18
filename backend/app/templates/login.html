@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h2>Login</h2>
+    <form id="loginForm">
+        <div>
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        <div>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <button type="submit">Login</button>
+    </form>
+    <p id="loginMessage"></p>
+    <p>Don't have an account? <a href="{{ url_for('main.signup_page') }}">Sign Up</a></p>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const messageEl = document.getElementById('loginMessage');
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    messageEl.textContent = 'Login successful! Token: ' + result.token;
+                    messageEl.style.color = 'green';
+                    localStorage.setItem('authToken', result.token);
+                    localStorage.setItem('userId', result.user_id);
+                    localStorage.setItem('userRole', result.role);
+                    // Redirect or update UI (e.g., window.location.href = '/';)
+                    // For now, just log and display message
+                    console.log('Token stored:', result.token);
+                    console.log('User ID stored:', result.user_id);
+                    console.log('User Role stored:', result.role);
+                } else {
+                    messageEl.textContent = 'Login failed: ' + result.message;
+                    messageEl.style.color = 'red';
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('userId');
+                    localStorage.removeItem('userRole');
+                }
+            } catch (error) {
+                messageEl.textContent = 'Network error: ' + error.message;
+                messageEl.style.color = 'red';
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('userId');
+                localStorage.removeItem('userRole');
+            }
+        });
+    </script>
+</body>
+</html>
