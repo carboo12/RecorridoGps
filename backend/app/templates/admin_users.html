@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin - User Management</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><a href="{{ url_for('main.index_page') }}">Home</a></li>
+            <li><a href="{{ url_for('main.admin_page') }}">Admin Dashboard</a></li>
+            <li><a id="nav-logout" href="#" onclick="logout()">Logout</a></li>
+        </ul>
+    </nav>
+    <h1>User Management</h1>
+    <p><a href="{{ url_for('main.signup_page') }}">Create New User</a> (Admins can use the standard signup form)</p>
+
+    <table id="usersTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- User rows will be populated by JavaScript -->
+        </tbody>
+    </table>
+
+    <!-- Modal for Editing User (initially hidden) -->
+    <div id="editUserModal" style="display:none; position:fixed; top:20%; left:30%; width:40%; background:white; border:1px solid #ccc; padding:20px; box-shadow: 0 0 10px rgba(0,0,0,0.5);">
+        <h2>Edit User</h2>
+        <form id="editUserForm">
+            <input type="hidden" id="editUserId">
+            <div>
+                <label for="editUsername">Username:</label>
+                <input type="text" id="editUsername" required>
+            </div>
+            <div>
+                <label for="editUserRole">Role:</label>
+                <select id="editUserRole" required>
+                    <!-- Roles will be populated by JS or hardcoded if static -->
+                    <option value="admin">Admin</option>
+                    <option value="dba">DBA</option>
+                    <option value="supervisor">Supervisor</option>
+                    <option value="guardas">Guard</option>
+                    <option value="user">User</option>
+                </select>
+            </div>
+            <button type="submit">Save Changes</button>
+            <button type="button" onclick="document.getElementById('editUserModal').style.display='none'">Cancel</button>
+        </form>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script> <!-- Main script for logout, fetchWithAuth etc. -->
+    <script src="{{ url_for('static', filename='admin_users.js') }}"></script>
+</body>
+</html>

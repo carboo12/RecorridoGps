@@ -49,21 +49,29 @@ function logout() {
 document.addEventListener('DOMContentLoaded', function() {
     const loginLink = document.getElementById('nav-login');
     const logoutLink = document.getElementById('nav-logout');
-    const adminLink = document.getElementById('nav-admin'); // Assuming an id="nav-admin" on the admin nav link
-    const roundsLink = document.getElementById('nav-rounds'); // Assuming id="nav-rounds"
-    const signupLink = document.getElementById('nav-signup'); // Assuming id="nav-signup"
-    const welcomeMsg = document.getElementById('welcome-message'); // For user greeting
+    const adminLink = document.getElementById('nav-admin');
+    const roundsLink = document.getElementById('nav-rounds');
+    const signupLink = document.getElementById('nav-signup');
+    const welcomeMsg = document.getElementById('welcome-message');
+    const adminUsersLink = document.getElementById('nav-admin-users');
 
     if (getAuthToken()) {
         if (loginLink) loginLink.style.display = 'none';
         if (signupLink) signupLink.style.display = 'none';
-        if (logoutLink) logoutLink.style.display = 'inline'; // Show logout
+        if (logoutLink) logoutLink.style.display = 'inline';
 
         const userRole = getUserRole();
         if (adminLink && !['admin', 'dba', 'supervisor'].includes(userRole)) {
-            adminLink.style.display = 'none'; // Hide admin link for non-privileged users
+            adminLink.style.display = 'none';
         }
-         if (welcomeMsg && getUserId()) { // Assuming username is not stored, use ID or generic msg
+        if (adminUsersLink) {
+            if (['admin', 'dba'].includes(userRole)) {
+                adminUsersLink.style.display = 'inline';
+            } else {
+                adminUsersLink.style.display = 'none';
+            }
+        }
+         if (welcomeMsg && getUserId()) {
             welcomeMsg.textContent = `Welcome, User ${getUserId()} (${userRole})!`;
         }
 
@@ -71,8 +79,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (loginLink) loginLink.style.display = 'inline';
         if (signupLink) signupLink.style.display = 'inline';
         if (logoutLink) logoutLink.style.display = 'none';
-        if (adminLink) adminLink.style.display = 'none'; // Hide admin if not logged in
-        if (roundsLink) roundsLink.style.display = 'none'; // Hide rounds if not logged in
+        if (adminLink) adminLink.style.display = 'none';
+        if (adminUsersLink) adminUsersLink.style.display = 'none';
+        if (roundsLink) roundsLink.style.display = 'none';
          if (welcomeMsg) welcomeMsg.textContent = 'Please log in.';
     }
 

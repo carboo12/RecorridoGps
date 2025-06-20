@@ -8,13 +8,64 @@
 <body>
     <h2>Site Management</h2>
     <form id="siteForm">
-        <input type="text" id="siteName" placeholder="Site Name" required>
-        <input type="text" id="siteCoordinates" placeholder="Site Coordinates (lat,lon)"> <!-- Changed to siteCoordinates -->
-        <textarea id="siteDescription" placeholder="Site Description"></textarea>
+        <div>
+            <label for="siteName">Site Name:</label>
+            <input type="text" id="siteName" placeholder="Site Name" required>
+        </div>
+        <div>
+            <label for="siteDescription">Site Description:</label>
+            <textarea id="siteDescription" placeholder="Site Description"></textarea>
+        </div>
+        <div>
+            <label for="siteAddress">Site Address:</label>
+            <textarea id="siteAddress" placeholder="Site Address"></textarea>
+        </div>
+        <div>
+            <label for="siteLatitude">Latitude:</label>
+            <input type="number" step="any" id="siteLatitude" placeholder="e.g., 40.7128">
+        </div>
+        <div>
+            <label for="siteLongitude">Longitude:</label>
+            <input type="number" step="any" id="siteLongitude" placeholder="e.g., -74.0060">
+        </div>
+        <!-- Old siteCoordinate input removed -->
         <button type="submit">Create Site</button>
     </form>
-    <div id="sitesList"></div>
+    <div id="sitesList">
+        <!-- Site list will be populated by admin.js -->
+        <!-- JS will need to be updated to show new fields -->
+    </div>
     <hr>
+
+    <div id="editSiteModal" style="display:none; position:fixed; top:10%; left:25%; width:50%; background:white; border:1px solid #ccc; padding:20px; box-shadow: 0 0 10px rgba(0,0,0,0.5); z-index:1000;">
+        <h2>Edit Site</h2>
+        <form id="editSiteForm">
+            <input type="hidden" id="editSiteId">
+            <div>
+                <label for="editSiteName">Site Name:</label>
+                <input type="text" id="editSiteName" required>
+            </div>
+            <div>
+                <label for="editSiteDescription">Site Description:</label>
+                <textarea id="editSiteDescription"></textarea>
+            </div>
+            <div>
+                <label for="editSiteAddress">Site Address:</label>
+                <textarea id="editSiteAddress"></textarea>
+            </div>
+            <div>
+                <label for="editSiteLatitude">Latitude:</label>
+                <input type="number" step="any" id="editSiteLatitude">
+            </div>
+            <div>
+                <label for="editSiteLongitude">Longitude:</label>
+                <input type="number" step="any" id="editSiteLongitude">
+            </div>
+            <button type="submit">Save Changes</button>
+            <button type="button" onclick="document.getElementById('editSiteModal').style.display='none'">Cancel</button>
+        </form>
+    </div>
+
     <h2>Checkpoint Management</h2>
     <form id="checkpointForm">
         <label for="checkpointSiteId">For Site:</label>
@@ -27,14 +78,72 @@
     <hr>
     <h2>Access Point Management</h2>
     <form id="accessPointForm">
-        <label for="accessPointSiteId">For Site:</label>
-        <select id="accessPointSiteId" required></select> <!-- Populate with sites -->
-        <input type="text" id="accessPointName" placeholder="Access Point Name" required>
-        <input type="text" id="accessPointCoordinates" placeholder="Coordinates (lat,lon)" required>
-        <textarea id="accessPointDescription" placeholder="Access Point Description"></textarea>
+        <div>
+            <label for="accessPointSiteId">For Site:</label>
+            <select id="accessPointSiteId" required></select>
+        </div>
+        <div>
+            <label for="accessPointNumber">Point Number:</label> <!-- New Field -->
+            <input type="number" id="accessPointNumber" placeholder="e.g., 1" required>
+        </div>
+        <div>
+            <label for="accessPointName">Access Point Name:</label>
+            <input type="text" id="accessPointName" placeholder="e.g., Main Entrance" required>
+        </div>
+        <div>
+            <label for="accessPointLatitude">Latitude:</label>
+            <input type="number" step="any" id="accessPointLatitude" placeholder="e.g., 40.7128">
+        </div>
+        <div>
+            <label for="accessPointLongitude">Longitude:</label>
+            <input type="number" step="any" id="accessPointLongitude" placeholder="e.g., -74.0060">
+        </div>
+        <div>
+            <button type="button" id="getCreateAPLocationBtn">Use My Location</button>
+        </div>
+        <div>
+            <label for="accessPointDescription">Description:</label>
+            <textarea id="accessPointDescription" placeholder="Description"></textarea>
+        </div>
         <button type="submit">Create Access Point</button>
     </form>
-    <div id="accessPointsList"></div>
+    <div id="accessPointsList">
+        <!-- Access point list populated by admin.js -->
+    </div>
+
+    <!-- Modal for Editing Access Point (initially hidden) -->
+    <div id="editAccessPointModal" style="display:none; position:fixed; top:15%; left:25%; width:50%; background:white; border:1px solid #ccc; padding:20px; box-shadow: 0 0 10px rgba(0,0,0,0.5); z-index:1001;">
+        <h2>Edit Access Point</h2>
+        <form id="editAccessPointForm">
+            <input type="hidden" id="editAccessPointId">
+            <input type="hidden" id="editAccessPointSiteIdModal"> <!-- To pass site_id if needed for API call path -->
+            <div>
+                <label for="editAPPointNumber">Point Number:</label>
+                <input type="number" id="editAPPointNumber" required>
+            </div>
+            <div>
+                <label for="editAPName">Name:</label>
+                <input type="text" id="editAPName" required>
+            </div>
+            <div>
+                <label for="editAPLatitude">Latitude:</label>
+                <input type="number" step="any" id="editAPLatitude">
+            </div>
+            <div>
+                <label for="editAPLongitude">Longitude:</label>
+                <input type="number" step="any" id="editAPLongitude">
+            </div>
+            <div>
+                <button type="button" id="getEditAPLocationBtn">Use My Location</button>
+            </div>
+            <div>
+                <label for="editAPDescription">Description:</label>
+                <textarea id="editAPDescription"></textarea>
+            </div>
+            <button type="submit">Save Changes</button>
+            <button type="button" onclick="document.getElementById('editAccessPointModal').style.display='none'">Cancel</button>
+        </form>
+    </div>
     <script src="{{ url_for('static', filename='admin.js') }}"></script>
 </body>
 </html>

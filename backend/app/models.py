@@ -21,37 +21,56 @@ class User(db.Model):
     password_hash = db.Column(db.String(128), nullable=False)
 
     user_type_id = db.Column(db.Integer, db.ForeignKey('user_type.id'), nullable=False)
-    # Removed: role = db.Column(db.String(20), nullable=False, default='user')
+    is_active = db.Column(db.Boolean, nullable=False, default=True) # New field
 
     rounds = db.relationship('Round', backref='user', lazy=True)
 
     def __repr__(self):
-        return f'<User {self.username}>'
+        return f'<User {self.username} (Active: {self.is_active})>' # Updated repr
 
 class Site(db.Model):
     __tablename__ = 'site'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
     description = db.Column(db.Text, nullable=True)
-    coordinates = db.Column(db.String(100), nullable=True) # For "lat,lon" or similar format
 
+    # New fields
+    address = db.Column(db.Text, nullable=True)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
+    registration_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    registered_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+
+    # Old field (to be removed)
+    # coordinates = db.Column(db.String(100), nullable=True)
+
+    # Relationships
     checkpoints = db.relationship('Checkpoint', backref='site', lazy=True)
     rounds = db.relationship('Round', backref='site', lazy=True)
     access_points = db.relationship('Access', backref='site', lazy=True, cascade="all, delete-orphan")
 
+    # Relationship to get User details of who registered the site
+    registered_by = db.relationship('User', foreign_keys=[registered_by_user_id])
+
+
     def __repr__(self):
-        return f'<Site {self.name}>'
+        return f'<Site {self.name} (Lat: {self.latitude}, Lon: {self.longitude})>'
 
 class Access(db.Model):
     __tablename__ = 'access'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    coordinates = db.Column(db.String(100), nullable=True) # For "lat,lon" or similar format
+        coordinates = db.Column(db.String(100), nullable=True) # e.g., "latitude,longitude"
+        description = db.Column(db.Text, nullable=True)
+        point_number = db.Column(db.Integer, nullable=False) # New field
     site_id = db.Column(db.Integer, db.ForeignKey('site.id'), nullable=False)
-    description = db.Column(db.Text, nullable=True)
+
+        # Example for unique constraint if point_number should be unique per site
+        # __table_args__ = (db.UniqueConstraint('site_id', 'point_number', name='_site_point_uc'),)
+
 
     def __repr__(self):
-        return f'<Access {self.name} for Site {self.site_id}>'
+            return f'<Access Point {self.point_number}: {self.name} @ Site {self.site_id}>' # Updated repr
 
 class Checkpoint(db.Model):
     __tablename__ = 'checkpoint'

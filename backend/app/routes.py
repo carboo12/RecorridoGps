@@ -29,61 +29,225 @@ def create_user(token_data):
              return jsonify({'message': f"Invalid role: {role_name} and default 'user' type not found."}), 400
 
     hashed_password = hash_password(data['password'])
-    new_user = User(username=data['username'], password_hash=hashed_password, user_type_id=user_type.id)
+    new_user = User(username=data['username'], password_hash=hashed_password, user_type_id=user_type.id) # is_active defaults to True
     db.session.add(new_user)
     db.session.commit()
     return jsonify({'message': 'User created successfully', 'user_id': new_user.id, 'role': user_type.name}), 201
 
+@api_bp.route('/users/<int:user_id>', methods=['PUT'])
+@admin_roles_required
+def update_user(token_data, user_id):
+    user_to_update = User.query.get_or_404(user_id)
+    data = request.get_json()
+
+    if not data:
+        return jsonify({'message': 'No input data provided'}), 400
+
+    if 'username' in data:
+        new_username = data['username']
+        if new_username != user_to_update.username and User.query.filter_by(username=new_username).first():
+            return jsonify({'message': 'Username already taken'}), 400
+        user_to_update.username = new_username
+
+    if 'role' in data:
+        role_name = data['role']
+        user_type = UserType.query.filter_by(name=role_name).first()
+        if not user_type:
+            return jsonify({'message': f'Invalid role name: {role_name}'}), 400
+        user_to_update.user_type_id = user_type.id
+
+    if 'is_active' in data:
+        if not isinstance(data['is_active'], bool):
+            return jsonify({'message': 'is_active must be a boolean (true/false)'}), 400
+        user_to_update.is_active = data['is_active']
+
+    if 'password' in data and data['password']:
+        if len(data['password']) < 6:
+             return jsonify({'message': 'Password too short (min 6 characters)'}),400
+        user_to_update.password_hash = hash_password(data['password'])
+
+    db.session.commit()
+
+    updated_user_role_name = user_to_update.user_type.name if user_to_update.user_type else 'N/A'
+    return jsonify({
+        'message': 'User updated successfully',
+        'user': {
+            'id': user_to_update.id,
+            'username': user_to_update.username,
+            'role': updated_user_role_name,
+            'is_active': user_to_update.is_active
+        }
+    }), 200
+
+@api_bp.route('/users', methods=['GET'])
+@admin_roles_required
+def get_users(token_data):
+    users = User.query.all()
+    output = []
+    for user_obj in users:
+        role_name = user_obj.user_type.name if user_obj.user_type else 'N/A'
+        output.append({
+            'id': user_obj.id,
+            'username': user_obj.username,
+            'role': role_name,
+            'is_active': user_obj.is_active
+        })
+    return jsonify(output), 200
 
 @api_bp.route('/users/<int:user_id>', methods=['GET'])
 @token_required
 def get_user(token_data, user_id):
-    # Future: could add logic: if token_data['user_id'] == user_id OR token_data['role'] in ['admin', 'dba']
     user = User.query.get_or_404(user_id)
-    user_role_name = user.user_type.name if user.user_type else 'N/A'
-    return jsonify({'id': user.id, 'username': user.username, 'role': user_role_name})
+    role_name = user.user_type.name if user.user_type else 'N/A'
+    return jsonify({
+        'id': user.id,
+        'username': user.username,
+        'role': role_name,
+        'is_active': user.is_active
+    })
 
 # Site Management: Supervisor, Admin, DBA can create/view sites
 @api_bp.route('/sites', methods=['POST'])
 @supervisor_or_admin_roles_required
 def create_site(token_data):
     data = request.get_json()
-    if not data or 'name' not in data: # Corrected key check
+    if not data or not data.get('name'): # name is mandatory
         return jsonify({'message': 'Site name is required'}), 400
+
     if Site.query.filter_by(name=data['name']).first():
-        return jsonify({'message': 'Site already exists'}), 400
-    new_site = Site(name=data['name'],
-                    description=data.get('description'),
-                    coordinates=data.get('coordinates'))
+        return jsonify({'message': 'Site with this name already exists'}), 400
+
+    registered_by_user_id = token_data.get('user_id') # Get user_id from token
+
+    new_site = Site(
+        name=data['name'],
+        description=data.get('description'),
+        address=data.get('address'),
+        latitude=data.get('latitude'),
+        longitude=data.get('longitude'),
+        registered_by_user_id=registered_by_user_id
+        # registration_date is set by default in the model
+    )
     db.session.add(new_site)
     db.session.commit()
-    return jsonify({'message': 'Site created successfully', 'site_id': new_site.id}), 201
 
+    user_who_registered = User.query.get(registered_by_user_id) if registered_by_user_id else None
+    return jsonify({
+        'message': 'Site created successfully',
+        'site': {
+            'id': new_site.id,
+            'name': new_site.name,
+            'description': new_site.description,
+            'address': new_site.address,
+            'latitude': new_site.latitude,
+            'longitude': new_site.longitude,
+            'registration_date': new_site.registration_date.isoformat(),
+            'registered_by_user_id': new_site.registered_by_user_id,
+            'registered_by_username': user_who_registered.username if user_who_registered else None
+        }
+    }), 201
+
+@api_bp.route('/sites/<int:site_id>', methods=['PUT'])
+@supervisor_or_admin_roles_required
+def update_site(token_data, site_id):
+    site_to_update = Site.query.get_or_404(site_id)
+    data = request.get_json()
+
+    if not data:
+        return jsonify({'message': 'No input data provided'}), 400
+
+    if 'name' in data:
+        new_name = data['name']
+        if new_name != site_to_update.name and Site.query.filter_by(name=new_name).first():
+            return jsonify({'message': 'Another site with this name already exists'}), 400
+        site_to_update.name = new_name
+
+    if 'description' in data:
+        site_to_update.description = data['description']
+    if 'address' in data:
+        site_to_update.address = data['address']
+    if 'latitude' in data:
+        site_to_update.latitude = data['latitude']
+    if 'longitude' in data:
+        site_to_update.longitude = data['longitude']
+
+    db.session.commit()
+
+    user_who_registered = User.query.get(site_to_update.registered_by_user_id) if site_to_update.registered_by_user_id else None
+    return jsonify({
+        'message': 'Site updated successfully',
+        'site': {
+            'id': site_to_update.id,
+            'name': site_to_update.name,
+            'description': site_to_update.description,
+            'address': site_to_update.address,
+            'latitude': site_to_update.latitude,
+            'longitude': site_to_update.longitude,
+            'registration_date': site_to_update.registration_date.isoformat(),
+            'registered_by_user_id': site_to_update.registered_by_user_id,
+            'registered_by_username': user_who_registered.username if user_who_registered else None,
+            'access_points': [{
+                'id': ap.id,
+                'name': ap.name,
+                'coordinates': ap.coordinates,
+                'description': ap.description,
+                'point_number': ap.point_number # Added point_number
+            } for ap in site_to_update.access_points]
+        }
+    }), 200
 
 # List sites: any authenticated user can list sites
 @api_bp.route('/sites', methods=['GET'])
 @token_required
 def get_sites(token_data):
     sites = Site.query.all()
-    return jsonify([{
-        'id': site.id,
-        'name': site.name,
-        'description': site.description,
-        'coordinates': site.coordinates,
-        'access_points': [{'id': ap.id, 'name': ap.name, 'coordinates': ap.coordinates, 'description': ap.description} for ap in site.access_points]
-    } for site in sites])
+    output = []
+    for site in sites:
+        user_who_registered = User.query.get(site.registered_by_user_id) if site.registered_by_user_id else None
+        site_data = {
+            'id': site.id,
+            'name': site.name,
+            'description': site.description,
+            'address': site.address,
+            'latitude': site.latitude,
+            'longitude': site.longitude,
+            'registration_date': site.registration_date.isoformat() if site.registration_date else None,
+            'registered_by_user_id': site.registered_by_user_id,
+            'registered_by_username': user_who_registered.username if user_who_registered else None,
+            'access_points': [{
+                'id': ap.id,
+                'name': ap.name,
+                'coordinates': ap.coordinates,
+                'description': ap.description,
+                'point_number': ap.point_number # Added point_number
+            } for ap in site.access_points]
+        }
+        output.append(site_data)
+    return jsonify(output)
 
 @api_bp.route('/sites/<int:site_id>', methods=['GET'])
 @token_required
 def get_site(token_data, site_id):
     site = Site.query.get_or_404(site_id)
-    access_points = [{'id': ap.id, 'name': ap.name, 'coordinates': ap.coordinates, 'description': ap.description} for ap in site.access_points]
+    user_who_registered = User.query.get(site.registered_by_user_id) if site.registered_by_user_id else None
+
     return jsonify({
         'id': site.id,
         'name': site.name,
         'description': site.description,
-        'coordinates': site.coordinates,
-        'access_points': access_points
+        'address': site.address,
+        'latitude': site.latitude,
+        'longitude': site.longitude,
+        'registration_date': site.registration_date.isoformat() if site.registration_date else None,
+        'registered_by_user_id': site.registered_by_user_id,
+        'registered_by_username': user_who_registered.username if user_who_registered else None,
+        'access_points': [{
+            'id': ap.id,
+            'name': ap.name,
+            'coordinates': ap.coordinates,
+            'description': ap.description,
+            'point_number': ap.point_number # Added point_number
+        } for ap in site.access_points]
     })
 
 # Checkpoint Management: Supervisor, Admin, DBA
@@ -111,20 +275,89 @@ def get_checkpoints(token_data, site_id):
 @supervisor_or_admin_roles_required
 def create_access_point(token_data, site_id):
     data = request.get_json()
-    if not data or 'name' not in data or 'coordinates' not in data: # Corrected key check
-        return jsonify({'message': 'Access point name and coordinates are required'}), 400
+    if not data or not data.get('name') or data.get('point_number') is None:
+        return jsonify({'message': 'Access point name and point_number are required'}), 400
+
     site = Site.query.get_or_404(site_id)
-    new_access_point = Access(name=data['name'], coordinates=data['coordinates'], site_id=site.id, description=data.get('description'))
+
+    new_access_point = Access(
+        name=data['name'],
+        coordinates=data.get('coordinates'),
+        description=data.get('description'),
+        point_number=data['point_number'],
+        site_id=site.id
+    )
     db.session.add(new_access_point)
     db.session.commit()
-    return jsonify({'message': 'Access point created', 'access_point_id': new_access_point.id}), 201
+    return jsonify({
+        'message': 'Access point created',
+        'access_point': {
+            'id': new_access_point.id,
+            'name': new_access_point.name,
+            'coordinates': new_access_point.coordinates,
+            'description': new_access_point.description,
+            'point_number': new_access_point.point_number,
+            'site_id': new_access_point.site_id
+        }
+    }), 201
+
+@api_bp.route('/sites/<int:site_id>/access_points/<int:access_point_id>', methods=['PUT'])
+@supervisor_or_admin_roles_required
+def update_access_point(token_data, site_id, access_point_id):
+    access_point_to_update = Access.query.filter_by(id=access_point_id, site_id=site_id).first_or_404()
+    data = request.get_json()
+
+    if not data:
+        return jsonify({'message': 'No input data provided'}), 400
+
+    if 'name' in data:
+        access_point_to_update.name = data['name']
+    if 'coordinates' in data:
+        access_point_to_update.coordinates = data['coordinates']
+    if 'description' in data:
+        access_point_to_update.description = data['description']
+    if 'point_number' in data:
+        new_point_number = data.get('point_number')
+        if new_point_number is None:
+             return jsonify({'message': 'point_number cannot be null if provided'}), 400
+        access_point_to_update.point_number = new_point_number
+
+    db.session.commit()
+    return jsonify({
+        'message': 'Access point updated successfully',
+        'access_point': {
+            'id': access_point_to_update.id,
+            'name': access_point_to_update.name,
+            'coordinates': access_point_to_update.coordinates,
+            'description': access_point_to_update.description,
+            'point_number': access_point_to_update.point_number,
+            'site_id': access_point_to_update.site_id
+        }
+    }), 200
+
+@api_bp.route('/sites/<int:site_id>/access_points/<int:access_point_id>', methods=['DELETE'])
+@supervisor_or_admin_roles_required
+def delete_access_point(token_data, site_id, access_point_id):
+    access_point_to_delete = Access.query.filter_by(id=access_point_id, site_id=site_id).first_or_404()
+
+    db.session.delete(access_point_to_delete)
+    db.session.commit()
+
+    return jsonify({'message': 'Access point deleted successfully'}), 200
 
 @api_bp.route('/sites/<int:site_id>/access_points', methods=['GET'])
 @token_required
 def get_access_points(token_data, site_id):
-    Site.query.get_or_404(site_id) # Ensure site exists
-    access_points = Access.query.filter_by(site_id=site_id).all()
-    return jsonify([{'id': ap.id, 'name': ap.name, 'coordinates': ap.coordinates, 'description': ap.description} for ap in access_points])
+    Site.query.get_or_404(site_id)
+    access_points = Access.query.filter_by(site_id=site_id).order_by(Access.point_number).all()
+    return jsonify([{
+        'id': ap.id,
+        'name': ap.name,
+        'coordinates': ap.coordinates,
+        'description': ap.description,
+        'point_number': ap.point_number,
+        'site_id': ap.site_id
+    } for ap in access_points])
 
 
 # Round Management
@@ -261,12 +494,16 @@ def list_rounds(token_data):
 @api_bp.route('/login', methods=['POST'])
 def login_user():
     data = request.get_json()
-    if not data or 'username' not in data or 'password' not in data: # Corrected 'in' check
+    if not data or 'username' not in data or 'password' not in data:
         return jsonify({'message': 'Username and password are required'}), 400
 
     user = User.query.filter_by(username=data['username']).first()
+
     if not user:
         return jsonify({'message': 'User not found'}), 401
+
+    if not user.is_active: # New check
+        return jsonify({'message': 'Account is disabled. Please contact admin.'}), 403 # Forbidden
 
     if user.password_hash != hash_password(data['password']):
         return jsonify({'message': 'Invalid credentials'}), 401
@@ -281,6 +518,12 @@ def login_user():
     }
     try:
         token = jwt.encode(token_payload, current_app.config['SECRET_KEY'], algorithm='HS256')
-        return jsonify({'message': 'Login successful', 'token': token, 'user_id': user.id, 'role': user_role_name}), 200
+        return jsonify({
+            'message': 'Login successful',
+            'token': token,
+            'user_id': user.id,
+            'username': user.username, # Also return username
+            'role': user_role_name
+        }), 200
     except Exception as e:
         return jsonify({'message': f'Error generating token: {str(e)}'}), 500

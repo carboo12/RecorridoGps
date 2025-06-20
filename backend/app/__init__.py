@@ -24,6 +24,16 @@ def admin_page():
 def rounds_page():
     return render_template('rounds.html')
 
+    @main_bp.route('/admin/users')
+    # @login_required # If you have a Flask-Login style login_required, apply it
+    def admin_users_page():
+        # Further server-side role check can be added here if desired,
+        # though API calls are already protected.
+        # For example, using Flask-Login:
+        # if not current_user.is_authenticated or current_user.user_type.name not in ['admin', 'dba']:
+        #     return redirect(url_for('main.login_page')) # Or show an error
+        return render_template('admin_users.html')
+
 
 def populate_user_types(app_context_db):
     # Pre-populate UserTypes
